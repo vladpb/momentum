@@ -1,4 +1,3 @@
-// src/pages/Profile.tsx
 import React, { useState } from 'react';
 import {
     Box, Typography, Paper, TextField, Button,

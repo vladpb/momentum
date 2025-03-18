@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { useMemo } from 'react';
 import {
     Box, Typography, Grid, CardContent,
@@ -82,7 +81,17 @@ const Dashboard = () => {
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>Dashboard</Typography>
+            <Typography 
+                variant="h4" 
+                component="h1" 
+                sx={{ 
+                    fontWeight: 700,
+                    color: theme => theme.palette.text.primary,
+                    mb: 4  // Add more bottom margin (32px in the default theme)
+                }}
+            >
+                Dashboard
+            </Typography>
 
             <Grid container spacing={3}>
                 {/* Stats Cards */}
@@ -170,9 +179,9 @@ const Dashboard = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <GlassSurface depth={1} opacity={0.3} sx={{ p: 2, height: 340 }}>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ p: 2, minHeight: '400px' }}>
                         <Typography variant="h6">Project Progress</Typography>
-                        <ResponsiveContainer width="100%" height="90%">
+                        <ResponsiveContainer width="100%" height={350}>
                             <BarChart
                                 data={stats.projectData}
                                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}

@@ -17,7 +17,17 @@ const Settings = () => {
 
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>Settings</Typography>
+                        <Typography 
+                variant="h4" 
+                component="h1" 
+                sx={{ 
+                    fontWeight: 700,
+                    color: theme => theme.palette.text.primary,
+                    mb: 4
+                }}
+            >
+                Settings
+            </Typography>
 
             <GlassSurface sx={{ p: 3, mb: 3 }} depth={1} opacity={0.3}>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
