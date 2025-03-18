@@ -1,21 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { lightTheme, darkTheme } from './theme/theme';
+import { darkTheme } from './theme/theme';
 import AppRoutes from './routes';
 import AppLayout from './components/layout/AppLayout';
 import DataSyncProvider from './components/DataSyncProvider';
 
 function App() {
-    const [darkMode, setDarkMode] = useState(
-        window.matchMedia('(prefers-color-scheme: dark)').matches
-    );
-
-    const theme = useMemo(() => darkMode ? darkTheme : lightTheme, [darkMode]);
-
-    const toggleDarkMode = () => setDarkMode(!darkMode);
+    // Use the dark theme for better VisionOS appearance
+    const theme = useMemo(() => darkTheme, []);
 
     return (
         <ThemeProvider theme={theme}>
@@ -23,7 +18,7 @@ function App() {
             <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <BrowserRouter>
                     <DataSyncProvider>
-                        <AppLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+                        <AppLayout>
                             <AppRoutes />
                         </AppLayout>
                     </DataSyncProvider>

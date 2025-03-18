@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
-    Box, Button, Typography, Paper, Alert, 
-    Divider, Grid, Tooltip, Switch, FormControlLabel
+    Box, Typography, Alert, 
+    Divider, Grid, Tooltip, FormControlLabel,
+    useTheme, alpha, SelectChangeEvent, Select, MenuItem, FormControl
 } from '@mui/material';
 import { 
     FileDownload as ExportIcon,
@@ -12,6 +13,8 @@ import { exportData, importData } from '../../utils/dataExport';
 import { useTaskStore } from '../../store/taskStore';
 import { useProjectStore } from '../../store/projectStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import GlassSurface from '../../components/ui/GlassSurface';
+import VisionButton from '../../components/ui/VisionButton';
 
 const DataManagement = () => {
     const [importStatus, setImportStatus] = useState<{
@@ -22,14 +25,15 @@ const DataManagement = () => {
     const { settings, updateSettings } = useSettingsStore();
     const [useIndexedDB, setUseIndexedDB] = useState(settings.storage.useIndexedDB);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const theme = useTheme();
     
     // Sync local state with settings store
     useEffect(() => {
         setUseIndexedDB(settings.storage.useIndexedDB);
     }, [settings.storage.useIndexedDB]);
     
-    const handleStorageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.checked;
+    const handleStorageChange = (e: SelectChangeEvent) => {
+        const newValue = e.target.value === 'indexeddb';
         setUseIndexedDB(newValue);
         updateSettings({
             storage: {
@@ -91,14 +95,25 @@ const DataManagement = () => {
     };
     
     return (
-        <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Data Management</Typography>
+        <GlassSurface sx={{ p: 3, mb: 3 }} depth={1} opacity={0.3}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                Data Management
+            </Typography>
             <Divider sx={{ mb: 3 }} />
             
             {importStatus.message && (
                 <Alert 
                     severity={importStatus.success ? 'success' : 'error'}
-                    sx={{ mb: 3 }}
+                    sx={{ 
+                        mb: 3,
+                        background: alpha(
+                            importStatus.success 
+                                ? theme.palette.success.main 
+                                : theme.palette.error.main, 
+                            0.1
+                        ),
+                        border: 'none'
+                    }}
                     onClose={() => setImportStatus({})}
                 >
                     {importStatus.message}
@@ -108,52 +123,71 @@ const DataManagement = () => {
             <Box sx={{ mb: 3 }}>
                 <FormControlLabel
                     control={
-                        <Switch
-                            checked={useIndexedDB}
-                            onChange={handleStorageChange}
-                        />
+                        <FormControl sx={{ minWidth: 150 }}>
+                            <Select
+                                value={useIndexedDB ? 'indexeddb' : 'localstorage'}
+                                onChange={handleStorageChange}
+                                size="small"
+                                sx={{
+                                    backdropFilter: 'blur(10px)',
+                                    background: alpha(theme.palette.background.paper, 0.3),
+                                }}
+                            >
+                                <MenuItem value="localstorage">LocalStorage</MenuItem>
+                                <MenuItem value="indexeddb">IndexedDB</MenuItem>
+                            </Select>
+                        </FormControl>
                     }
-                    label={
-                        <Typography variant="body2">
-                            Use IndexedDB for data storage (more robust than localStorage)
-                        </Typography>
-                    }
+                    label="Storage Type"
+                    labelPlacement="start"
+                    sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        mx: 0
+                    }}
                 />
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 2 }}>
-                    Recommended for larger datasets and better performance
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 2, mt: 1 }}>
+                    IndexedDB is recommended for larger datasets and better performance
                 </Typography>
             </Box>
             
             <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                     <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Export Data</Typography>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                            Export Data
+                        </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                             Export all your tasks, projects, and settings as a JSON file. Use this to backup your data or transfer it to another device.
                         </Typography>
-                        <Button 
+                        <VisionButton 
                             variant="contained" 
                             startIcon={<ExportIcon />}
                             onClick={handleExportData}
+                            glass
                         >
                             Export All Data
-                        </Button>
+                        </VisionButton>
                     </Box>
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
                     <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Import Data</Typography>
+                        <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                            Import Data
+                        </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                             Import data from a previously exported JSON file. This will replace all your current data.
                         </Typography>
-                        <Button 
+                        <VisionButton 
                             variant="outlined" 
                             startIcon={<ImportIcon />}
                             onClick={handleImportClick}
+                            glass
                         >
                             Import Data
-                        </Button>
+                        </VisionButton>
                         <input 
                             type="file" 
                             ref={fileInputRef}
@@ -166,7 +200,9 @@ const DataManagement = () => {
                 
                 <Grid item xs={12}>
                     <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle1" color="error" gutterBottom>Danger Zone</Typography>
+                    <Typography variant="subtitle1" color="error" gutterBottom sx={{ fontWeight: 600 }}>
+                        Danger Zone
+                    </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Box>
                             <Typography variant="body1">Clear All Data</Typography>
@@ -175,19 +211,20 @@ const DataManagement = () => {
                             </Typography>
                         </Box>
                         <Tooltip title="We recommend exporting your data before clearing it">
-                            <Button 
+                            <VisionButton 
                                 variant="outlined" 
                                 color="error"
                                 startIcon={<DeleteIcon />}
                                 onClick={clearAllData}
+                                glass
                             >
                                 Clear All Data
-                            </Button>
+                            </VisionButton>
                         </Tooltip>
                     </Box>
                 </Grid>
             </Grid>
-        </Paper>
+        </GlassSurface>
     );
 };
 

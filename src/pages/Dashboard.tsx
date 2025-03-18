@@ -1,15 +1,18 @@
 // src/pages/Dashboard.tsx
 import { useMemo } from 'react';
 import {
-    Box, Typography, Paper, Grid, Card, CardContent,
+    Box, Typography, Grid, CardContent,
     LinearProgress, useTheme
 } from '@mui/material';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTaskStore } from '../store/taskStore';
+import { useProjectStore } from '../store/projectStore';
+import GlassSurface from '../components/ui/GlassSurface';
 
 const Dashboard = () => {
     const theme = useTheme();
     const tasks = useTaskStore(state => state.tasks);
+    const projects = useProjectStore(state => state.projects);
 
     const stats = useMemo(() => {
         const totalTasks = tasks.length;
@@ -41,22 +44,18 @@ const Dashboard = () => {
             return acc;
         }, {} as Record<string, { total: number, completed: number }>);
 
-        const projectData = Object.entries(projectMap).map(([name, data]) => ({
-            name,
-            total: data.total,
-            completed: data.completed
-        }));
-
-        // Time tracking - using optional chaining to prevent errors if timeTracking is undefined
-        const totalTimeSpent = tasks.reduce((sum, task) => sum + (task.timeTracking?.totalTime || 0), 0);
-        const timeByProject = Object.entries(
-            tasks.reduce((acc, task) => {
-                const project = task.projectId || 'Unassigned';
-                if (!acc[project]) acc[project] = 0;
-                acc[project] += (task.timeTracking?.totalTime || 0);
-                return acc;
-            }, {} as Record<string, number>)
-        ).map(([name, time]) => ({ name, time }));
+        // Find project names and create project data with proper labels
+        const projectData = Object.entries(projectMap).map(([id, data]) => {
+            const projectName = id === 'Unassigned' ? 'Unassigned' : 
+                projects.find(p => p.id === id)?.name || 'Unknown Project';
+            
+            return {
+                id,
+                name: projectName,
+                total: data.total,
+                completed: data.completed
+            };
+        });
 
         return {
             totalTasks,
@@ -64,18 +63,22 @@ const Dashboard = () => {
             completionRate,
             statusData,
             priorityData,
-            projectData,
-            totalTimeSpent,
-            timeByProject
+            projectData
         };
-    }, [tasks]);
+    }, [tasks, projects]);
 
-    const COLORS = [
-        theme.palette.primary.main,
-        theme.palette.secondary.main,
-        theme.palette.success.main,
-        theme.palette.warning.main
-    ];
+    const COLORS = {
+        status: [
+            theme.palette.primary.main, // To Do - Blue
+            theme.palette.warning.main, // In Progress
+            theme.palette.success.main // Done
+        ],
+        priority: [
+            theme.palette.error.main, // High
+            theme.palette.warning.main, // Medium
+            theme.palette.success.main // Low
+        ]
+    };
 
     return (
         <Box sx={{ p: 3 }}>
@@ -84,24 +87,24 @@ const Dashboard = () => {
             <Grid container spacing={3}>
                 {/* Stats Cards */}
                 <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ minHeight: '160px' }}>
+                        <CardContent sx={{ height: '120px' }}>
                             <Typography color="textSecondary" gutterBottom>Total Tasks</Typography>
                             <Typography variant="h3">{stats.totalTasks}</Typography>
                         </CardContent>
-                    </Card>
+                    </GlassSurface>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ minHeight: '160px' }}>
+                        <CardContent sx={{ height: '120px' }}>
                             <Typography color="textSecondary" gutterBottom>Completed Tasks</Typography>
                             <Typography variant="h3">{stats.completedTasks}</Typography>
                         </CardContent>
-                    </Card>
+                    </GlassSurface>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ minHeight: '160px' }}>
+                        <CardContent sx={{ height: '120px' }}>
                             <Typography color="textSecondary" gutterBottom>Completion Rate</Typography>
                             <Typography variant="h3">{stats.completionRate.toFixed(1)}%</Typography>
                             <LinearProgress
@@ -110,13 +113,13 @@ const Dashboard = () => {
                                 sx={{ mt: 1 }}
                             />
                         </CardContent>
-                    </Card>
+                    </GlassSurface>
                 </Grid>
 
                 {/* Charts */}
                 <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, height: 300 }}>
-                        <Typography variant="h6">Tasks by Status</Typography>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ p: 2, height: 350 }}>
+                        <Typography variant="h6" sx={{ mb: 1 }}>Tasks by Status</Typography>
                         <ResponsiveContainer width="100%" height="90%">
                             <PieChart>
                                 <Pie
@@ -130,19 +133,19 @@ const Dashboard = () => {
                                     label
                                 >
                                     {stats.statusData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={COLORS.status[index % COLORS.status.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip />
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </GlassSurface>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Paper sx={{ p: 2, height: 300 }}>
-                        <Typography variant="h6">Tasks by Priority</Typography>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ p: 2, height: 350 }}>
+                        <Typography variant="h6" sx={{ mb: 1 }}>Tasks by Priority</Typography>
                         <ResponsiveContainer width="100%" height="90%">
                             <PieChart>
                                 <Pie
@@ -156,18 +159,18 @@ const Dashboard = () => {
                                     label
                                 >
                                     {stats.priorityData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={COLORS.priority[index % COLORS.priority.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip />
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </GlassSurface>
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Paper sx={{ p: 2, height: 400 }}>
+                    <GlassSurface depth={1} opacity={0.3} sx={{ p: 2, height: 340 }}>
                         <Typography variant="h6">Project Progress</Typography>
                         <ResponsiveContainer width="100%" height="90%">
                             <BarChart
@@ -182,7 +185,7 @@ const Dashboard = () => {
                                 <Bar dataKey="completed" name="Completed" fill={theme.palette.success.main} />
                             </BarChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </GlassSurface>
                 </Grid>
             </Grid>
         </Box>

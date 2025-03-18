@@ -39,7 +39,7 @@ interface SettingsState {
 
 // Default settings
 const defaultSettings: UserSettings = {
-    theme: 'system',
+    theme: 'dark',
     language: 'en',
     workingHours: {
         start: '09:00',

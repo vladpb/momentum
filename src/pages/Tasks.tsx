@@ -1,16 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-    Box, Paper, Typography, Button, Grid, Card,
-    CardContent, CardActions, IconButton, Dialog,
-    DialogTitle, DialogContent, DialogActions,
+    Box, Typography, Button, Grid, 
+    Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, MenuItem, FormControl, InputLabel, Select,
-    Fab, SxProps, Theme, Chip
+    Fab, SxProps, Theme, useTheme, useMediaQuery
 } from '@mui/material';
-import {
-    Add as AddIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon
-} from '@mui/icons-material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { useTaskStore, Task } from '../store/taskStore';
 import { useProjectStore } from '../store/projectStore';
@@ -34,8 +29,14 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import TaskDetail from '../components/task/TaskDetail';
+import GlassSurface from '../components/ui/GlassSurface';
+import VisionButton from '../components/ui/VisionButton';
+import TaskCard from '../components/tasks/TaskCard';
+import { alpha } from '@mui/material/styles';
 
 const TasksPage = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { tasks, addTask, updateTask, deleteTask, moveTask } = useTaskStore();
     const { projects } = useProjectStore();
     const [open, setOpen] = useState(false);
@@ -133,7 +134,7 @@ const TasksPage = () => {
     // Find the active task
     const activeTask = activeId ? tasks.find(task => task.id === activeId) : null;
 
-    // Add a handler to open the task detail
+    // Update handleOpenTaskDetail to work with the imported TaskCard
     const handleOpenTaskDetail = (taskId: string) => {
         setSelectedTaskId(taskId);
     };
@@ -211,207 +212,256 @@ const TasksPage = () => {
                     onEdit={onEdit} 
                     onDelete={onDelete} 
                     dragHandleProps={!disabled ? { ...attributes, ...listeners } : {}}
+                    onClick={() => handleOpenTaskDetail(task.id)}
                 />
             </div>
         );
     };
 
-    // Non-sortable task card component (used for both sortable items and drag overlay)
-    interface TaskCardProps {
-        task: Task;
-        onEdit: () => void;
-        onDelete: () => void;
-        dragHandleProps?: Record<string, unknown>;
-    }
-
-    const TaskCard = ({ task, onEdit, onDelete, dragHandleProps = {} }: TaskCardProps) => {
-        return (
-            <Card
-                sx={{ mb: 1, cursor: 'pointer' }}
-                onClick={() => handleOpenTaskDetail(task.id)}
-                {...dragHandleProps}
-            >
-                <CardContent sx={{ pb: 1 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                        {task.title}
-                    </Typography>
-                    {task.description && (
-                        <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 1 }}>
-                            {task.description}
-                        </Typography>
-                    )}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                            <Chip
-                                label={task.priority}
-                                size="small"
-                                color={
-                                    task.priority === 'low' ? 'success' :
-                                    task.priority === 'medium' ? 'warning' :
-                                    task.priority === 'high' ? 'error' : 'error'
-                                }
-                                sx={{ mr: 0.5 }}
-                            />
-                            {task.dueDate && (
-                                <Chip
-                                    label={new Date(task.dueDate).toLocaleDateString()}
-                                    size="small"
-                                    variant="outlined"
-                                />
-                            )}
-                        </Box>
-                    </Box>
-                </CardContent>
-                <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
-                    <IconButton
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit();
-                        }}
-                    >
-                        <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete();
-                        }}
-                    >
-                        <DeleteIcon fontSize="small" />
-                    </IconButton>
-                </CardActions>
-            </Card>
-        );
-    };
-
     return (
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h4">Tasks</Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => handleOpenDialog()}
+        <Box sx={{ 
+            p: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%', // Fill the available height
+            position: 'relative',
+        }}>
+            <Box 
+                sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    mb: 3
+                }}
+            >
+                <Typography 
+                    variant="h4" 
+                    component="h1" 
+                    sx={{ 
+                        fontWeight: 700,
+                        color: theme => theme.palette.text.primary
+                    }}
                 >
-                    New Task
-                </Button>
+                    Tasks
+                </Typography>
+                
+                {!isMobile && (
+                    <VisionButton
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => handleOpenDialog()}
+                        glow
+                    >
+                        New Task
+                    </VisionButton>
+                )}
             </Box>
 
-            <DndContext 
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                flexGrow: 1,
+            }}>
+                <DndContext 
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                >
+                    <Grid 
+                        container 
+                        spacing={3}
+                        sx={{
+                            flexGrow: 1,
+                            margin: 0, // Remove default margin
+                            width: '100%',
+                        }}
+                    >
+                        <Grid item xs={12} md={4}>
+                            <GlassSurface
+                                depth={1}
+                                opacity={0.3}
+                                sx={{
+                                    p: 2,
+                                    height: 'calc(100vh - 180px)',
+                                    minHeight: '400px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    backdropFilter: 'blur(12px)',
+                                    border: 'none',
+                                }}
+                            >
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 2, 
+                                        fontWeight: 600,
+                                        textAlign: 'center',
+                                        color: (theme) => theme.palette.primary.main,
+                                    }}
+                                >
+                                    To Do
+                                </Typography>
+                                <ColumnDroppable id="todo" sx={{ 
+                                    flexGrow: 1, 
+                                    overflow: 'auto',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <SortableContext 
+                                        items={todoTasks.map(task => task.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {todoTasks.map((task) => (
+                                            <SortableTaskItem 
+                                                key={task.id} 
+                                                task={task}
+                                                onEdit={() => handleOpenDialog(task)}
+                                                onDelete={() => handleDeleteTask(task.id)}
+                                                disabled={activeId !== null}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </ColumnDroppable>
+                            </GlassSurface>
+                        </Grid>
+
+                        <Grid item xs={12} md={4}>
+                            <GlassSurface
+                                depth={1}
+                                opacity={0.3}
+                                sx={{
+                                    p: 2,
+                                    height: 'calc(100vh - 180px)',
+                                    minHeight: '400px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    backdropFilter: 'blur(12px)',
+                                    border: 'none',
+                                }}
+                            >
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 2, 
+                                        fontWeight: 600,
+                                        textAlign: 'center',
+                                        color: (theme) => theme.palette.warning.main,
+                                    }}
+                                >
+                                    In Progress
+                                </Typography>
+                                <ColumnDroppable id="in_progress" sx={{ 
+                                    flexGrow: 1, 
+                                    overflow: 'auto',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <SortableContext 
+                                        items={inProgressTasks.map(task => task.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {inProgressTasks.map((task) => (
+                                            <SortableTaskItem 
+                                                key={task.id} 
+                                                task={task}
+                                                onEdit={() => handleOpenDialog(task)}
+                                                onDelete={() => handleDeleteTask(task.id)}
+                                                disabled={activeId !== null}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </ColumnDroppable>
+                            </GlassSurface>
+                        </Grid>
+
+                        <Grid item xs={12} md={4}>
+                            <GlassSurface
+                                depth={1}
+                                opacity={0.3}
+                                sx={{
+                                    p: 2,
+                                    height: 'calc(100vh - 180px)',
+                                    minHeight: '400px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    backdropFilter: 'blur(12px)',
+                                    border: 'none',
+                                }}
+                            >
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 2, 
+                                        fontWeight: 600,
+                                        textAlign: 'center',
+                                        color: (theme) => theme.palette.success.main,
+                                    }}
+                                >
+                                    Done
+                                </Typography>
+                                <ColumnDroppable id="done" sx={{ 
+                                    flexGrow: 1, 
+                                    overflow: 'auto',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <SortableContext 
+                                        items={doneTasks.map(task => task.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {doneTasks.map((task) => (
+                                            <SortableTaskItem 
+                                                key={task.id} 
+                                                task={task}
+                                                onEdit={() => handleOpenDialog(task)}
+                                                onDelete={() => handleDeleteTask(task.id)}
+                                                disabled={activeId !== null}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </ColumnDroppable>
+                            </GlassSurface>
+                        </Grid>
+                    </Grid>
+
+                    {/* Drag overlay for better visual feedback */}
+                    <DragOverlay>
+                        {activeTask ? (
+                            <TaskCard 
+                                task={activeTask} 
+                                onEdit={() => {}} 
+                                onDelete={() => {}} 
+                                onClick={() => {}}
+                            />
+                        ) : null}
+                    </DragOverlay>
+                </DndContext>
+            </Box>
+
+            <Dialog 
+                open={open} 
+                onClose={handleCloseDialog} 
+                fullWidth 
+                maxWidth="sm"
+                PaperProps={{
+                    sx: {
+                        borderRadius: '16px',
+                        background: (theme) => alpha(theme.palette.background.paper, 0.7),
+                        backdropFilter: 'blur(10px)',
+                        border: 'none',
+                    }
+                }}
             >
-                <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                        <Paper
-                            sx={{
-                                p: 2,
-                                bgcolor: 'background.default',
-                                height: 'calc(100vh - 180px)',
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}
-                        >
-                            <Typography variant="h6" sx={{ mb: 2 }}>To Do</Typography>
-                            <ColumnDroppable id="todo" sx={{ flexGrow: 1, overflow: 'auto' }}>
-                                <SortableContext 
-                                    items={todoTasks.map(task => task.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {todoTasks.map((task) => (
-                                        <SortableTaskItem 
-                                            key={task.id} 
-                                            task={task}
-                                            onEdit={() => handleOpenDialog(task)}
-                                            onDelete={() => handleDeleteTask(task.id)}
-                                            disabled={activeId !== null}
-                                        />
-                                    ))}
-                                </SortableContext>
-                            </ColumnDroppable>
-                        </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} md={4}>
-                        <Paper
-                            sx={{
-                                p: 2,
-                                bgcolor: 'background.default',
-                                height: 'calc(100vh - 180px)',
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}
-                        >
-                            <Typography variant="h6" sx={{ mb: 2 }}>In Progress</Typography>
-                            <ColumnDroppable id="in_progress" sx={{ flexGrow: 1, overflow: 'auto' }}>
-                                <SortableContext 
-                                    items={inProgressTasks.map(task => task.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {inProgressTasks.map((task) => (
-                                        <SortableTaskItem 
-                                            key={task.id} 
-                                            task={task}
-                                            onEdit={() => handleOpenDialog(task)}
-                                            onDelete={() => handleDeleteTask(task.id)}
-                                            disabled={activeId !== null}
-                                        />
-                                    ))}
-                                </SortableContext>
-                            </ColumnDroppable>
-                        </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} md={4}>
-                        <Paper
-                            sx={{
-                                p: 2,
-                                bgcolor: 'background.default',
-                                height: 'calc(100vh - 180px)',
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}
-                        >
-                            <Typography variant="h6" sx={{ mb: 2 }}>Done</Typography>
-                            <ColumnDroppable id="done" sx={{ flexGrow: 1, overflow: 'auto' }}>
-                                <SortableContext 
-                                    items={doneTasks.map(task => task.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {doneTasks.map((task) => (
-                                        <SortableTaskItem 
-                                            key={task.id} 
-                                            task={task}
-                                            onEdit={() => handleOpenDialog(task)}
-                                            onDelete={() => handleDeleteTask(task.id)}
-                                            disabled={activeId !== null}
-                                        />
-                                    ))}
-                                </SortableContext>
-                            </ColumnDroppable>
-                        </Paper>
-                    </Grid>
-                </Grid>
-
-                {/* Drag overlay for better visual feedback */}
-                <DragOverlay>
-                    {activeTask ? (
-                        <TaskCard 
-                            task={activeTask} 
-                            onEdit={() => {}} 
-                            onDelete={() => {}} 
-                        />
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
-
-            <Dialog open={open} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-                <DialogTitle>{isEditing ? 'Edit Task' : 'Create New Task'}</DialogTitle>
-                <DialogContent>
+                <DialogTitle sx={{ pb: 1, pt: 3 }}>
+                    <Typography variant="h6" fontWeight={600}>
+                        {isEditing ? 'Edit Task' : 'Create New Task'}
+                    </Typography>
+                </DialogTitle>
+                <DialogContent sx={{ pb: 3, px: 3 }}>
                     <TextField
                         autoFocus
                         margin="dense"
@@ -419,7 +469,14 @@ const TasksPage = () => {
                         fullWidth
                         value={currentTask.title}
                         onChange={(e) => setCurrentTask({...currentTask, title: e.target.value})}
-                        sx={{ mb: 2 }}
+                        sx={{ 
+                            mb: 3, 
+                            mt: 2,
+                            '& .MuiOutlinedInput-root': {
+                                backdropFilter: 'blur(8px)',
+                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                            }
+                        }}
                     />
                     <TextField
                         margin="dense"
@@ -429,11 +486,17 @@ const TasksPage = () => {
                         rows={3}
                         value={currentTask.description}
                         onChange={(e) => setCurrentTask({...currentTask, description: e.target.value})}
-                        sx={{ mb: 2 }}
+                        sx={{ 
+                            mb: 4,
+                            '& .MuiOutlinedInput-root': {
+                                backdropFilter: 'blur(8px)',
+                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                            }
+                        }}
                     />
-                    <Grid container spacing={2}>
+                    <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
                         <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth sx={{ mb: 2 }}>
+                            <FormControl fullWidth>
                                 <InputLabel>Priority</InputLabel>
                                 <Select
                                     value={currentTask.priority}
@@ -442,6 +505,11 @@ const TasksPage = () => {
                                         ...currentTask,
                                         priority: e.target.value as Task['priority']
                                     })}
+                                    sx={{
+                                        backdropFilter: 'blur(8px)',
+                                        background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                        height: '56px', // Match the height of the DatePicker
+                                    }}
                                 >
                                     <MenuItem value="low">Low</MenuItem>
                                     <MenuItem value="medium">Medium</MenuItem>
@@ -461,13 +529,20 @@ const TasksPage = () => {
                                 slotProps={{
                                     textField: {
                                         fullWidth: true,
-                                        margin: 'dense'
+                                        variant: 'outlined',
+                                        sx: {
+                                            '& .MuiOutlinedInput-root': {
+                                                backdropFilter: 'blur(8px)',
+                                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                                height: '56px', // Match the height
+                                            }
+                                        }
                                     }
                                 }}
                             />
                         </Grid>
                     </Grid>
-                    <FormControl fullWidth sx={{ mb: 2 }}>
+                    <FormControl fullWidth sx={{ mb: 3 }}>
                         <InputLabel>Project</InputLabel>
                         <Select
                             value={currentTask.projectId || ''}
@@ -476,32 +551,71 @@ const TasksPage = () => {
                                 ...currentTask,
                                 projectId: e.target.value || null
                             })}
+                            sx={{
+                                backdropFilter: 'blur(8px)',
+                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                height: '56px',
+                            }}
                         >
                             <MenuItem value="">None</MenuItem>
                             {projects.map((project) => (
                                 <MenuItem key={project.id} value={project.id}>
-                                    {project.name}
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Box 
+                                            sx={{ 
+                                                width: 12, 
+                                                height: 12, 
+                                                borderRadius: '50%', 
+                                                bgcolor: project.color, 
+                                                mr: 1 
+                                            }} 
+                                        />
+                                        {project.name}
+                                    </Box>
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleSaveTask} variant="contained" color="primary">
-                        {isEditing ? 'Update' : 'Create'}
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button 
+                        onClick={handleCloseDialog}
+                        sx={{ 
+                            '&:hover': { 
+                                color: (theme) => theme.palette.primary.dark 
+                            } 
+                        }}
+                    >
+                        Cancel
                     </Button>
+                    <VisionButton 
+                        onClick={handleSaveTask} 
+                        variant="contained"
+                        disabled={!currentTask.title}
+                        sx={{ 
+                            '&:hover': { 
+                                '& .MuiButton-startIcon, & .MuiButton-endIcon, & .MuiSvgIcon-root, .MuiTypography-root': {
+                                    color: (theme) => alpha(theme.palette.primary.contrastText, 0.9),
+                                },
+                            } 
+                        }}
+                    >
+                        {isEditing ? 'Update' : 'Create'}
+                    </VisionButton>
                 </DialogActions>
             </Dialog>
 
-            <Fab
-                color="primary"
-                aria-label="add"
-                sx={{ position: 'fixed', bottom: 16, right: 16 }}
-                onClick={() => handleOpenDialog()}
-            >
-                <AddIcon />
-            </Fab>
+            {/* Mobile fab button */}
+            {isMobile && (
+                <Fab
+                    color="primary"
+                    aria-label="add task"
+                    sx={{ position: 'fixed', bottom: 16, right: 16 }}
+                    onClick={() => handleOpenDialog()}
+                >
+                    <AddIcon />
+                </Fab>
+            )}
 
             {selectedTaskId && (
                 <TaskDetail
