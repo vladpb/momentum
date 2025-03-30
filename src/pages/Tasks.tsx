@@ -3,9 +3,13 @@ import {
     Box, Typography, Button, Grid, 
     Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, MenuItem, FormControl, InputLabel, Select,
-    Fab, SxProps, Theme, useTheme, useMediaQuery
+    Fab, SxProps, Theme, useTheme, useMediaQuery,
+    InputAdornment
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { TimePicker } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { Add as AddIcon, Timer as TimerIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { useTaskStore, Task } from '../store/taskStore';
 import { useProjectStore } from '../store/projectStore';
@@ -54,6 +58,9 @@ const TasksPage = () => {
         parentTaskId: null,
     });
     const [isEditing, setIsEditing] = useState(false);
+    const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+    const [hours, setHours] = useState<string>('0');
+    const [minutes, setMinutes] = useState<string>('0');
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -69,6 +76,20 @@ const TasksPage = () => {
     const handleOpenDialog = (task?: Task) => {
         if (task) {
             setCurrentTask(task);
+            // Extract hours and minutes from estimatedTime if it exists
+            if (task.estimatedTime) {
+                setHours(Math.floor(task.estimatedTime / 60).toString());
+                setMinutes((task.estimatedTime % 60).toString());
+            } else {
+                setHours('0');
+                setMinutes('0');
+            }
+            // Set time picker value if dueDate exists
+            if (task.dueDate) {
+                setSelectedTime(new Date(task.dueDate));
+            } else {
+                setSelectedTime(null);
+            }
             setIsEditing(true);
         } else {
             setCurrentTask({
@@ -82,6 +103,9 @@ const TasksPage = () => {
                 projectId: null,
                 parentTaskId: null,
             });
+            setHours('0');
+            setMinutes('0');
+            setSelectedTime(null);
             setIsEditing(false);
         }
         setOpen(true);
@@ -92,10 +116,30 @@ const TasksPage = () => {
     };
 
     const handleSaveTask = () => {
-        if (isEditing && currentTask.id) {
-            updateTask(currentTask.id, currentTask);
+        // Calculate estimated time in minutes
+        const estimatedTimeInMinutes = parseInt(hours) * 60 + parseInt(minutes);
+        
+        // If we have both a date and a time, combine them
+        let dueDate = currentTask.dueDate;
+        if (dueDate && selectedTime) {
+            const dueDateObj = new Date(dueDate);
+            const timeObj = new Date(selectedTime);
+            
+            dueDateObj.setHours(timeObj.getHours());
+            dueDateObj.setMinutes(timeObj.getMinutes());
+            dueDate = dueDateObj.toISOString();
+        }
+        
+        const taskToSave = {
+            ...currentTask,
+            estimatedTime: estimatedTimeInMinutes > 0 ? estimatedTimeInMinutes : null,
+            dueDate: dueDate
+        };
+        
+        if (isEditing && taskToSave.id) {
+            updateTask(taskToSave.id, taskToSave);
         } else {
-            addTask(currentTask as Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'timeTracking'>);
+            addTask(taskToSave as Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completedAt' | 'timeTracking'>);
         }
         handleCloseDialog();
     };
@@ -273,7 +317,7 @@ const TasksPage = () => {
                         spacing={3}
                         sx={{
                             flexGrow: 1,
-                            margin: 0, // Remove default margin
+                            margin: 0,
                             width: '100%',
                         }}
                     >
@@ -442,168 +486,237 @@ const TasksPage = () => {
                 </DndContext>
             </Box>
 
-            <Dialog 
-                open={open} 
-                onClose={handleCloseDialog} 
-                fullWidth 
-                maxWidth="sm"
-                PaperProps={{
-                    sx: {
-                        borderRadius: '16px',
-                        background: (theme) => alpha(theme.palette.background.paper, 0.7),
-                        backdropFilter: 'blur(10px)',
-                        border: 'none',
-                    }
-                }}
-            >
-                <DialogTitle sx={{ pb: 1, pt: 3 }}>
-                    <Typography variant="h6" fontWeight={600}>
-                        {isEditing ? 'Edit Task' : 'Create New Task'}
-                    </Typography>
-                </DialogTitle>
-                <DialogContent sx={{ pb: 3, px: 3 }}>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Title"
-                        fullWidth
-                        value={currentTask.title}
-                        onChange={(e) => setCurrentTask({...currentTask, title: e.target.value})}
-                        sx={{ 
-                            mb: 3, 
-                            mt: 2,
-                            '& .MuiOutlinedInput-root': {
-                                backdropFilter: 'blur(8px)',
-                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
-                            }
-                        }}
-                    />
-                    <TextField
-                        margin="dense"
-                        label="Description"
-                        fullWidth
-                        multiline
-                        rows={3}
-                        value={currentTask.description}
-                        onChange={(e) => setCurrentTask({...currentTask, description: e.target.value})}
-                        sx={{ 
-                            mb: 4,
-                            '& .MuiOutlinedInput-root': {
-                                backdropFilter: 'blur(8px)',
-                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
-                            }
-                        }}
-                    />
-                    <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Priority</InputLabel>
-                                <Select
-                                    value={currentTask.priority}
-                                    label="Priority"
-                                    onChange={(e) => setCurrentTask({
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <Dialog 
+                    open={open} 
+                    onClose={handleCloseDialog} 
+                    fullWidth 
+                    maxWidth="sm"
+                    PaperProps={{
+                        sx: {
+                            borderRadius: '16px',
+                            background: (theme) => alpha(theme.palette.background.paper, 0.7),
+                            backdropFilter: 'blur(10px)',
+                            border: 'none',
+                        }
+                    }}
+                >
+                    <DialogTitle sx={{ pb: 1, pt: 3 }}>
+                        <Typography variant="h6" fontWeight={600}>
+                            {isEditing ? 'Edit Task' : 'Create New Task'}
+                        </Typography>
+                    </DialogTitle>
+                    <DialogContent sx={{ pb: 3, px: 3 }}>
+                        <TextField
+                            autoFocus
+                            margin="dense"
+                            label="Title"
+                            fullWidth
+                            value={currentTask.title}
+                            onChange={(e) => setCurrentTask({...currentTask, title: e.target.value})}
+                            sx={{ 
+                                mb: 3, 
+                                mt: 2,
+                                '& .MuiOutlinedInput-root': {
+                                    backdropFilter: 'blur(8px)',
+                                    background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                }
+                            }}
+                        />
+                        <TextField
+                            margin="dense"
+                            label="Description"
+                            fullWidth
+                            multiline
+                            rows={3}
+                            value={currentTask.description}
+                            onChange={(e) => setCurrentTask({...currentTask, description: e.target.value})}
+                            sx={{ 
+                                mb: 4,
+                                '& .MuiOutlinedInput-root': {
+                                    backdropFilter: 'blur(8px)',
+                                    background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                }
+                            }}
+                        />
+                        <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Priority</InputLabel>
+                                    <Select
+                                        value={currentTask.priority}
+                                        label="Priority"
+                                        onChange={(e) => setCurrentTask({
+                                            ...currentTask,
+                                            priority: e.target.value as Task['priority']
+                                        })}
+                                        sx={{
+                                            backdropFilter: 'blur(8px)',
+                                            background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                            height: '56px', // Match the height of the DatePicker
+                                        }}
+                                    >
+                                        <MenuItem value="low">Low</MenuItem>
+                                        <MenuItem value="medium">Medium</MenuItem>
+                                        <MenuItem value="high">High</MenuItem>
+                                        <MenuItem value="urgent">Urgent</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <DatePicker
+                                    label="Due Date"
+                                    value={currentTask.dueDate ? new Date(currentTask.dueDate) : null}
+                                    onChange={(newValue) => setCurrentTask({
                                         ...currentTask,
-                                        priority: e.target.value as Task['priority']
+                                        dueDate: newValue ? newValue.toISOString() : null
                                     })}
-                                    sx={{
-                                        backdropFilter: 'blur(8px)',
-                                        background: (theme) => alpha(theme.palette.background.paper, 0.2),
-                                        height: '56px', // Match the height of the DatePicker
+                                    slotProps={{
+                                        textField: {
+                                            fullWidth: true,
+                                            variant: 'outlined',
+                                            sx: {
+                                                '& .MuiOutlinedInput-root': {
+                                                    backdropFilter: 'blur(8px)',
+                                                    background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                                    height: '56px', // Match the height
+                                                }
+                                            }
+                                        }
                                     }}
-                                >
-                                    <MenuItem value="low">Low</MenuItem>
-                                    <MenuItem value="medium">Medium</MenuItem>
-                                    <MenuItem value="high">High</MenuItem>
-                                    <MenuItem value="urgent">Urgent</MenuItem>
-                                </Select>
-                            </FormControl>
+                                />
+                            </Grid>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <DatePicker
-                                label="Due Date"
-                                value={currentTask.dueDate ? new Date(currentTask.dueDate) : null}
-                                onChange={(newValue) => setCurrentTask({
-                                    ...currentTask,
-                                    dueDate: newValue ? newValue.toISOString() : null
-                                })}
-                                slotProps={{
-                                    textField: {
-                                        fullWidth: true,
-                                        variant: 'outlined',
-                                        sx: {
+                        
+                        <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
+                            <Grid item xs={12} sm={6}>
+                                <TimePicker
+                                    label="Due Time"
+                                    value={selectedTime}
+                                    onChange={(newValue) => setSelectedTime(newValue)}
+                                    disabled={!currentTask.dueDate}
+                                    slotProps={{
+                                        textField: {
+                                            fullWidth: true,
+                                            variant: 'outlined',
+                                            helperText: !currentTask.dueDate ? "Set a due date first" : "",
+                                            sx: {
+                                                '& .MuiOutlinedInput-root': {
+                                                    backdropFilter: 'blur(8px)',
+                                                    background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                                    height: '56px',
+                                                }
+                                            }
+                                        }
+                                    }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                    <TextField
+                                        label="Hours"
+                                        type="number"
+                                        value={hours}
+                                        onChange={(e) => setHours(e.target.value)}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <TimerIcon fontSize="small" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        inputProps={{ min: 0 }}
+                                        sx={{
+                                            flex: 1,
                                             '& .MuiOutlinedInput-root': {
                                                 backdropFilter: 'blur(8px)',
                                                 background: (theme) => alpha(theme.palette.background.paper, 0.2),
-                                                height: '56px', // Match the height
+                                                height: '56px',
                                             }
-                                        }
-                                    }
-                                }}
-                            />
+                                        }}
+                                    />
+                                    <TextField
+                                        label="Minutes"
+                                        type="number"
+                                        value={minutes}
+                                        onChange={(e) => setMinutes(e.target.value)}
+                                        inputProps={{ min: 0, max: 59 }}
+                                        sx={{
+                                            flex: 1,
+                                            '& .MuiOutlinedInput-root': {
+                                                backdropFilter: 'blur(8px)',
+                                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                                height: '56px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            </Grid>
                         </Grid>
-                    </Grid>
-                    <FormControl fullWidth sx={{ mb: 3 }}>
-                        <InputLabel>Project</InputLabel>
-                        <Select
-                            value={currentTask.projectId || ''}
-                            label="Project"
-                            onChange={(e) => setCurrentTask({
-                                ...currentTask,
-                                projectId: e.target.value || null
-                            })}
-                            sx={{
-                                backdropFilter: 'blur(8px)',
-                                background: (theme) => alpha(theme.palette.background.paper, 0.2),
-                                height: '56px',
+                        
+                        <FormControl fullWidth sx={{ mb: 3 }}>
+                            <InputLabel>Project</InputLabel>
+                            <Select
+                                value={currentTask.projectId || ''}
+                                label="Project"
+                                onChange={(e) => setCurrentTask({
+                                    ...currentTask,
+                                    projectId: e.target.value || null
+                                })}
+                                sx={{
+                                    backdropFilter: 'blur(8px)',
+                                    background: (theme) => alpha(theme.palette.background.paper, 0.2),
+                                    height: '56px',
+                                }}
+                            >
+                                <MenuItem value="">None</MenuItem>
+                                {projects.map((project) => (
+                                    <MenuItem key={project.id} value={project.id}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <Box 
+                                                sx={{ 
+                                                    width: 12, 
+                                                    height: 12, 
+                                                    borderRadius: '50%', 
+                                                    bgcolor: project.color, 
+                                                    mr: 1 
+                                                }} 
+                                            />
+                                            {project.name}
+                                        </Box>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </DialogContent>
+                    <DialogActions sx={{ px: 3, pb: 3 }}>
+                        <Button 
+                            onClick={handleCloseDialog}
+                            sx={{ 
+                                '&:hover': { 
+                                    color: (theme) => theme.palette.primary.dark 
+                                } 
                             }}
                         >
-                            <MenuItem value="">None</MenuItem>
-                            {projects.map((project) => (
-                                <MenuItem key={project.id} value={project.id}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <Box 
-                                            sx={{ 
-                                                width: 12, 
-                                                height: 12, 
-                                                borderRadius: '50%', 
-                                                bgcolor: project.color, 
-                                                mr: 1 
-                                            }} 
-                                        />
-                                        {project.name}
-                                    </Box>
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button 
-                        onClick={handleCloseDialog}
-                        sx={{ 
-                            '&:hover': { 
-                                color: (theme) => theme.palette.primary.dark 
-                            } 
-                        }}
-                    >
-                        Cancel
-                    </Button>
-                    <VisionButton 
-                        onClick={handleSaveTask} 
-                        variant="contained"
-                        disabled={!currentTask.title}
-                        sx={{ 
-                            '&:hover': { 
-                                '& .MuiButton-startIcon, & .MuiButton-endIcon, & .MuiSvgIcon-root, .MuiTypography-root': {
-                                    color: (theme) => alpha(theme.palette.primary.contrastText, 0.9),
-                                },
-                            } 
-                        }}
-                    >
-                        {isEditing ? 'Update' : 'Create'}
-                    </VisionButton>
-                </DialogActions>
-            </Dialog>
+                            Cancel
+                        </Button>
+                        <VisionButton 
+                            onClick={handleSaveTask} 
+                            variant="contained"
+                            disabled={!currentTask.title}
+                            sx={{ 
+                                '&:hover': { 
+                                    '& .MuiButton-startIcon, & .MuiButton-endIcon, & .MuiSvgIcon-root, .MuiTypography-root': {
+                                        color: (theme) => alpha(theme.palette.primary.contrastText, 0.9),
+                                    },
+                                } 
+                            }}
+                        >
+                            {isEditing ? 'Update' : 'Create'}
+                        </VisionButton>
+                    </DialogActions>
+                </Dialog>
+            </LocalizationProvider>
 
             {/* Mobile fab button */}
             {isMobile && (
